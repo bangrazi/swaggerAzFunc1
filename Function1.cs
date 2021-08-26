@@ -80,11 +80,12 @@ namespace swaggerAzFunc1
             Description = @"Returns the value specified by its id.
             <pre>GET /api/values/{valueid:guid}</pre>")]
         [OpenApiParameter(
-            name: "valueid",
+            name: "valueId",
             Type = typeof(Guid),
-            Required = true,
+            In = Microsoft.OpenApi.Models.ParameterLocation.Path,
             Summary = "Identifies the requested model",
-            Description = "Guid indentifier for the requested value model.")]
+            Description = "Guid indentifier for the requested value model.",
+            Required = true)]
         [OpenApiResponseWithBody(
             statusCode: HttpStatusCode.OK,
             contentType: MediaTypeNames.Application.Json,
@@ -94,26 +95,29 @@ namespace swaggerAzFunc1
             Description = "Returns 404 NotFound if a value for the specified identifier cannot be found.")]
         public async Task<IActionResult> GetValue(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "values/{valueId:guid}")] HttpRequest request, 
-            Guid valueId)
+            [FromRoute] Guid valueId)
         {
             logger.LogInformation($">>> {nameof(GetValue)}, {nameof(valueId)}={valueId}");
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             ValueModel value = await service.Get(valueId);
+            string json = JsonSerializer.Serialize(value, options);
+
+            stopwatch.Stop();
+            logger.LogInformation($"<<< {nameof(GetValues)}, {nameof(valueId)}={valueId}, found={(value != null)}, elapsed={stopwatch.Elapsed}");
+
             if(value == null)
             {
                 return new NotFoundResult();
             }
-
-            string json = JsonSerializer.Serialize(value, options);
-
-            stopwatch.Stop();
-            logger.LogInformation($"<<< {nameof(GetValues)}, {nameof(valueId)}={valueId}, elapsed={stopwatch.Elapsed}");
-            return new ContentResult {
-                Content = json,
-                ContentType = MediaTypeNames.Application.Json,
-                StatusCode = StatusCodes.Status200OK,
-            };
+            else
+            {
+                return new ContentResult {
+                    Content = json,
+                    ContentType = MediaTypeNames.Application.Json,
+                    StatusCode = StatusCodes.Status200OK,
+                };
+            }
         }
     }
 }
