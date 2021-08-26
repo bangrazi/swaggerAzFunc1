@@ -20,10 +20,16 @@ namespace swaggerAzFunc1
 
     public class ValuesService : IValuesService
     {
-        private readonly ICollection<ValueModel> values = new List<ValueModel>();
+        private readonly ICollection<ValueModel> values;
 
         public ValuesService(ILogger<ValuesService> logger)
         {
+            values = new List<ValueModel>()
+            {
+                new ValueModel() { Name = "one", Value = 1, },
+                new ValueModel() { Name = "two", Value = 2, },
+                new ValueModel() { Name = "three", Value = 3, },
+            };
         }
 
         public Task<ValueModel> Add(ValueModel model)
