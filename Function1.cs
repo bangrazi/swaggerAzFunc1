@@ -12,11 +12,14 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Mime;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
+using System.Net;
 
 namespace swaggerAzFunc1
 {
     public class Function1
     {
+        private const string Function1Tag = "Function1";
         private readonly ILogger<Function1> logger;
         private readonly JsonSerializerOptions options;
         private readonly HttpClient http;
@@ -31,6 +34,16 @@ namespace swaggerAzFunc1
         }
 
         [FunctionName(nameof(GetValues))]
+        [OpenApiOperation(
+            operationId: nameof(GetValues), 
+            tags: new [] { Function1Tag },
+            Summary = "Gets all available values.",
+            Description = @"Returns the set of all available values.
+            <pre>GET /api/values</pre>")]
+        [OpenApiResponseWithBody(
+            statusCode: HttpStatusCode.OK,
+            contentType: MediaTypeNames.Application.Json,
+            bodyType: typeof(IEnumerable<ValueModel>))]
         public async Task<IActionResult> GetValues(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "values")] HttpRequest request)
         {
@@ -52,6 +65,44 @@ namespace swaggerAzFunc1
 
             stopwatch.Stop();
             logger.LogInformation($"{nameof(GetValues)}, count={values?.Count()}, elapsed={stopwatch.Elapsed}");
+            return new ContentResult {
+                Content = json,
+                ContentType = MediaTypeNames.Application.Json,
+                StatusCode = StatusCodes.Status200OK,
+            };
+        }
+
+        [FunctionName(nameof(GetValue))]
+        [OpenApiOperation(
+            operationId: nameof(GetValue), 
+            tags: new [] { Function1Tag },
+            Summary = "Gets the specified value.",
+            Description = @"Returns the value specified by its id.
+            <pre>GET /api/values/{valueid:guid}</pre>")]
+        [OpenApiResponseWithBody(
+            statusCode: HttpStatusCode.OK,
+            contentType: MediaTypeNames.Application.Json,
+            bodyType: typeof(ValueModel))]
+        [OpenApiResponseWithoutBody(
+            statusCode: HttpStatusCode.NotFound,
+            Description = "Returns 404 NotFound if a value for the specified identifier cannot be found.")]
+        public async Task<IActionResult> GetValue(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "values/{valueId:guid}")] HttpRequest request, 
+            Guid valueId)
+        {
+            logger.LogInformation($"{nameof(GetValue)}, {nameof(valueId)}={valueId}");
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            ValueModel value = await service.Get(valueId);
+            if(value == null)
+            {
+                return new NotFoundResult();
+            }
+
+            string json = JsonSerializer.Serialize(value, options);
+
+            stopwatch.Stop();
+            logger.LogInformation($"{nameof(GetValues)}, {nameof(valueId)}={valueId}, elapsed={stopwatch.Elapsed}");
             return new ContentResult {
                 Content = json,
                 ContentType = MediaTypeNames.Application.Json,
